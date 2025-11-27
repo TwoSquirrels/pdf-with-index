@@ -5,25 +5,29 @@
 // @description  Generate PDF with automatic indexing from CodiMD (md.trap.jp) notes
 // @author       TwoSquirrels
 // @match        https://md.trap.jp/*
-// @grant        none
+// @grant        GM.xmlHttpRequest
 // ==/UserScript==
 
 (function () {
   "use strict";
 
   // Configuration
-  const API_ENDPOINT =
-    localStorage.getItem("pdfWithIndex_apiEndpoint") ||
-    "http://localhost:8000/generate-pdf";
+  const API_ENDPOINT = "https://pdf-with-index.trap.show/generate-pdf";
+  const NOTIFICATION_DURATION = 3000;
+  const DEBUG_PREFIX = "[PDF with Index]";
+  const MENU_SELECTOR =
+    'ul.dropdown-menu.list[role="menu"][aria-labelledby="menu"]';
 
   // Wait for page to load
   function waitForElement(selector, timeout = 10000) {
     return new Promise((resolve, reject) => {
+      console.log(DEBUG_PREFIX, "waitForElement start", selector);
       const startTime = Date.now();
 
       const checkElement = () => {
         const element = document.querySelector(selector);
         if (element) {
+          console.log(DEBUG_PREFIX, "waitForElement resolved", selector);
           resolve(element);
           return;
         }
@@ -38,29 +42,6 @@
 
       checkElement();
     });
-  }
-
-  // Get markdown content from CodeMirror editor
-  function getMarkdownContent() {
-    // Try to get content from CodeMirror instance
-    const cmElement = document.querySelector(".CodeMirror");
-    if (cmElement && cmElement.CodeMirror) {
-      return cmElement.CodeMirror.getValue();
-    }
-
-    // Fallback: Try to get from textarea
-    const textarea = document.querySelector("#editor textarea");
-    if (textarea) {
-      return textarea.value;
-    }
-
-    // Fallback: Try to get from .markdown-body
-    const markdownBody = document.querySelector(".markdown-body");
-    if (markdownBody) {
-      return markdownBody.innerText;
-    }
-
-    return null;
   }
 
   // Get document title
@@ -117,17 +98,13 @@
     setTimeout(() => {
       notification.style.opacity = "0";
       setTimeout(() => notification.remove(), 300);
-    }, 3000);
+    }, NOTIFICATION_DURATION);
   }
 
   // Generate PDF
-  async function generatePDF(button) {
-    const originalText = button.textContent;
-    button.textContent = "生成中...";
-    button.disabled = true;
-
+  async function generatePDF() {
     try {
-      const content = getMarkdownContent();
+      const content = unsafeWindow.editor?.getValue?.();
       if (!content) {
         throw new Error("Markdownコンテンツを取得できませんでした");
       }
@@ -135,23 +112,35 @@
       const title = getDocumentTitle();
 
       // Make API request
-      const response = await fetch(API_ENDPOINT, {
+      console.log(DEBUG_PREFIX, "generatePDF request", API_ENDPOINT);
+      const response = await GM.xmlHttpRequest({
         method: "POST",
+        url: API_ENDPOINT,
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ title, content }),
+        data: JSON.stringify({ title, content }),
+        responseType: "blob",
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.detail || `Server error: ${response.status}`
-        );
+      console.log(DEBUG_PREFIX, "response status", response.status);
+      if (response.status < 200 || response.status >= 300) {
+        let message = response.statusText || "";
+        if (response.response) {
+          const text = await response.response.text().catch(() => "");
+          if (text) {
+            try {
+              const parsed = JSON.parse(text);
+              message = parsed.detail || parsed.message || text;
+            } catch {
+              message = text;
+            }
+          }
+        }
+        throw new Error(message || `Server error: ${response.status}`);
       }
 
-      // Get the PDF blob
-      const blob = await response.blob();
+      const blob = response.response;
 
       // Create download link
       const url = URL.createObjectURL(blob);
@@ -163,126 +152,78 @@
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
+      console.log(DEBUG_PREFIX, "PDF blob received");
       showNotification("PDFを生成しました", "success");
     } catch (error) {
       console.error("PDF generation failed:", error);
       showNotification(`エラー: ${error.message}`, "error");
-    } finally {
-      button.textContent = originalText;
-      button.disabled = false;
     }
   }
 
-  // Create PDF button
-  function createPDFButton() {
-    const button = document.createElement("button");
-    button.textContent = "📄 索引付きPDF";
-    button.className = "pdf-generate-btn";
+  function createPdfMenuItem(menu) {
+    if (menu.querySelector(".ui-download-pdf-with-index")) {
+      console.log(DEBUG_PREFIX, "menu already has item");
+      return;
+    }
 
-    Object.assign(button.style, {
-      padding: "6px 12px",
-      marginLeft: "8px",
-      backgroundColor: "#4a90d9",
-      color: "white",
-      border: "none",
-      borderRadius: "4px",
-      cursor: "pointer",
-      fontSize: "14px",
-      fontWeight: "500",
-      transition: "background-color 0.2s ease",
+    const li = document.createElement("li");
+    li.setAttribute("role", "presentation");
+
+    const link = document.createElement("a");
+    link.setAttribute("role", "menuitem");
+    link.className = "ui-download-pdf-with-index";
+    link.tabIndex = -1;
+    link.href = "#";
+    link.target = "_self";
+    link.innerHTML = '<i class="fa fa-file-pdf-o fa-fw"></i> PDF with Index';
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      generatePDF();
     });
 
-    button.addEventListener("mouseenter", () => {
-      if (!button.disabled) {
-        button.style.backgroundColor = "#357abd";
-      }
-    });
-
-    button.addEventListener("mouseleave", () => {
-      if (!button.disabled) {
-        button.style.backgroundColor = "#4a90d9";
-      }
-    });
-
-    button.addEventListener("click", () => generatePDF(button));
-
-    return button;
+    li.appendChild(link);
+    menu.appendChild(li);
+    console.log(DEBUG_PREFIX, "menu item added");
   }
 
-  // Add settings option
-  function createSettingsButton() {
-    const button = document.createElement("button");
-    button.textContent = "⚙️";
-    button.title = "PDF生成設定";
-    button.className = "pdf-settings-btn";
-
-    Object.assign(button.style, {
-      padding: "6px 8px",
-      marginLeft: "4px",
-      backgroundColor: "transparent",
-      color: "#666",
-      border: "1px solid #ddd",
-      borderRadius: "4px",
-      cursor: "pointer",
-      fontSize: "14px",
+  function ensureMenuItems() {
+    document.querySelectorAll(MENU_SELECTOR).forEach((menu) => {
+      createPdfMenuItem(menu);
     });
-
-    button.addEventListener("click", () => {
-      const currentEndpoint =
-        localStorage.getItem("pdfWithIndex_apiEndpoint") ||
-        "http://localhost:8000/generate-pdf";
-      const newEndpoint = prompt("APIエンドポイントURL:", currentEndpoint);
-
-      if (newEndpoint !== null) {
-        localStorage.setItem("pdfWithIndex_apiEndpoint", newEndpoint);
-        showNotification("設定を保存しました", "success");
-        // Reload to apply new endpoint
-        location.reload();
-      }
-    });
-
-    return button;
   }
 
   // Initialize
+  function observeMenus() {
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (!(node instanceof HTMLElement)) {
+            continue;
+          }
+          if (node.matches(MENU_SELECTOR)) {
+            console.log(DEBUG_PREFIX, "observer found menu node");
+            createPdfMenuItem(node);
+            continue;
+          }
+          const nested = node.querySelector?.(MENU_SELECTOR);
+          if (nested) {
+            console.log(DEBUG_PREFIX, "observer found nested menu");
+            createPdfMenuItem(nested);
+          }
+        }
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
   async function init() {
     try {
-      // Wait for toolbar/header to be available
-      const toolbar = await waitForElement(
-        ".toolbar, .header-toolbar, nav.navbar, .ui-edit-area-container, header"
-      );
-
-      // Create container for buttons
-      const container = document.createElement("div");
-      container.className = "pdf-buttons-container";
-      Object.assign(container.style, {
-        display: "inline-flex",
-        alignItems: "center",
-        marginLeft: "auto",
-        paddingRight: "8px",
-      });
-
-      container.appendChild(createPDFButton());
-      container.appendChild(createSettingsButton());
-
-      // Try to insert in appropriate location
-      if (toolbar.classList.contains("navbar")) {
-        const navbarRight = toolbar.querySelector(
-          ".navbar-right, .nav-right, .d-flex"
-        );
-        if (navbarRight) {
-          navbarRight.insertBefore(container, navbarRight.firstChild);
-        } else {
-          toolbar.appendChild(container);
-        }
-      } else {
-        toolbar.appendChild(container);
-      }
-
-      console.log("PDF with Index: Button added successfully");
+      await waitForElement(MENU_SELECTOR);
+      ensureMenuItems();
+      observeMenus();
+      console.log("PDF with Index: メニュー項目を追加しました");
     } catch (error) {
       console.error("PDF with Index: Failed to initialize", error);
-      // Retry after a delay
       setTimeout(init, 2000);
     }
   }
