@@ -111,7 +111,9 @@
       }
 
       const title = getDocumentTitle();
-      const sanitizedContent = content.replace(INFO_BLOCK_PATTERN, "\n\n");
+      const sanitizedContent = content
+        .replace(INFO_BLOCK_PATTERN, "\n\n")
+        .replace(/:\@[0-9A-Za-z_-]+:/g, "");
 
       // Make API request
       console.log(DEBUG_PREFIX, "generatePDF request", API_ENDPOINT);
