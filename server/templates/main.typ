@@ -16,18 +16,19 @@
 // Make index function
 // Collects all term metadata and generates a sorted index
 #let make-index() = {
-  // Get all index metadata
-  let all-terms = query(metadata.where(value => {
-    if type(value) == dictionary {
-      value.at("type", default: none) == "index"
+  // Get all index metadata entries and filter for type "index"
+  let all-terms = query(metadata)
+  let index-terms = all-terms.filter(entry => {
+    if type(entry.value) == dictionary {
+      entry.value.at("type", default: none) == "index"
     } else {
       false
     }
-  }))
+  })
   
   // Group terms by word with their page numbers
   let term-pages = (:)
-  for term in all-terms {
+  for term in index-terms {
     let word = term.value.word
     let yomi = term.value.yomi
     let page = term.location().page()
