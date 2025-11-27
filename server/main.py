@@ -41,140 +41,181 @@ def cleanup_temp_dir(temp_dir: str) -> None:
 class PDFRequest(BaseModel):
     """Request model for PDF generation."""
 
-        # Read template and body, then merge into final Typst file
-        template_src = BASE_DIR / "templates" / "main.typ"
-        main_typ = temp_path / "main.typ"
+        """
+        FastAPI application for converting Markdown to indexed PDF.
+        """
 
-        template_content = template_src.read_text(encoding="utf-8")
-        body_typ_content = body_typ.read_text(encoding="utf-8")
+        import shutil
+        import subprocess
+        import tempfile
+        from pathlib import Path
 
-        # Escape title for Typst string literal
-        escaped_title = request.title
-        escaped_title = escaped_title.replace("\\", "\\\\")
-        escaped_title = escaped_title.replace('"', '\\"')
-        escaped_title = escaped_title.replace("#", "\\#")
+        from fastapi import BackgroundTasks, FastAPI, HTTPException
+        from fastapi.middleware.cors import CORSMiddleware
+        from fastapi.responses import FileResponse
+        from pydantic import BaseModel
 
-        merged_template = template_content.replace(
-            '#let doc-title = "Document"',
-            f'#let doc-title = "{escaped_title}"',
+        from utils.typst_runner import compile_pdf
+
+        app = FastAPI(
+            title="PDF with Index Generator",
+            description="Convert Markdown to PDF with automatic indexing",
+            version="1.0.0",
         )
 
-        merged_template = merged_template.replace("{{BODY_CONTENT}}", body_typ_content)
-        main_typ.write_text(merged_template, encoding="utf-8")
-
-    try:
-        # Save input markdown
-        input_md = temp_path / "input.md"
-        input_md.write_text(request.content, encoding="utf-8")
-
-        # Get filter path
-        filter_path = BASE_DIR / "filters" / "auto_index.py"
-
-        # Run Pandoc with the filter to generate Typst content
-        body_typ = temp_path / "body.typ"
-        pandoc_cmd = [
-            "pandoc",
-            str(input_md),
-            "-t",
-            "typst",
-            "--filter",
-            str(filter_path),
-            "-o",
-            str(body_typ),
-        ]
-
-        try:
-            subprocess.run(
-                pandoc_cmd,
-                capture_output=True,
-                text=True,
-                check=True,
-                timeout=30,
-            )
-        except subprocess.CalledProcessError as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Pandoc conversion failed: {e.stderr}",
-            ) from e
-        except subprocess.TimeoutExpired as e:
-            raise HTTPException(
-                status_code=500,
-                detail="Pandoc conversion timed out",
-            ) from e
-
-        term_helper = (
-            '#let term(word, yomi) = {\n'
-            '  metadata((type: "index", word: word, yomi: yomi))\n'
-            '}\n\n'
-        )
-        horizontalrule_def = '#let horizontalrule = line(start: (25%, 0%), end: (75%, 0%))\n'
-        body_typ_content = body_typ.read_text(encoding="utf-8")
-        prefix = ""
-        if not body_typ_content.lstrip().startswith("#let term"):
-            prefix += term_helper
-        if "#let horizontalrule" not in body_typ_content:
-            prefix += horizontalrule_def
-        if prefix:
-            body_typ.write_text(prefix + body_typ_content, encoding="utf-8")
-
-        # Copy main template
-        template_src = BASE_DIR / "templates" / "main.typ"
-        main_typ = temp_path / "main.typ"
-
-        # Read and modify template to set title
-        template_content = template_src.read_text(encoding="utf-8")
-        # Escape title for Typst string literal
-        # Handle backslashes first, then quotes, then other special characters
-        escaped_title = request.title
-        escaped_title = escaped_title.replace("\\", "\\\\")
-        escaped_title = escaped_title.replace('"', '\\"')
-        # Escape hash to prevent Typst code execution
-        escaped_title = escaped_title.replace("#", "\\#")
-        modified_template = template_content.replace(
-            '#let doc-title = "Document"',
-            f'#let doc-title = "{escaped_title}"',
-        )
-        main_typ.write_text(modified_template, encoding="utf-8")
-
-        # Compile to PDF
-        output_pdf = temp_path / "output.pdf"
-        success, message = compile_pdf(
-            input_file=main_typ,
-            output_file=output_pdf,
-            root_dir=temp_path,
+        # Enable CORS for client-side requests
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
         )
 
-        if not success:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Typst compilation failed: {message}",
-            )
+        # Get the directory where this script is located
+        BASE_DIR = Path(__file__).parent
 
-        if not output_pdf.exists():
-            raise HTTPException(
-                status_code=500,
-                detail="PDF file was not generated",
-            )
 
-        # Return the PDF file
-        # Schedule cleanup after response is sent
-        safe_title = "".join(
-            c for c in request.title if c.isalnum() or c in (" ", "-", "_")
-        )[:50]
-        filename = f"{safe_title or 'document'}.pdf"
+        def cleanup_temp_dir(temp_dir: str) -> None:
+            """Clean up temporary directory."""
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
-        background_tasks.add_task(cleanup_temp_dir, temp_dir)
 
-        return FileResponse(
-            path=str(output_pdf),
-            media_type="application/pdf",
-            filename=filename,
-        )
+        class PDFRequest(BaseModel):
+            """Request model for PDF generation."""
 
-    except HTTPException:
-        # Re-raise HTTP exceptions
-        shutil.rmtree(temp_dir, ignore_errors=True)
-        raise
+            title: str
+            content: str
+
+
+        @app.get("/")
+        async def root() -> dict:
+            """Root endpoint for health check."""
+            return {"status": "ok", "message": "PDF with Index Generator is running"}
+
+
+        @app.get("/health")
+        async def health_check() -> dict:
+            """Health check endpoint."""
+            return {"status": "healthy"}
+
+
+        @app.post("/generate-pdf")
+        async def generate_pdf(
+            request: PDFRequest,
+            background_tasks: BackgroundTasks,
+        ) -> FileResponse:
+            """Generate a PDF with automatic indexing from Markdown content."""
+            temp_dir = tempfile.mkdtemp()
+            temp_path = Path(temp_dir)
+
+            try:
+                # Save input markdown
+                input_md = temp_path / "input.md"
+                input_md.write_text(request.content, encoding="utf-8")
+
+                # Run Pandoc with the auto-index filter
+                filter_path = BASE_DIR / "filters" / "auto_index.py"
+                body_typ = temp_path / "body.typ"
+                pandoc_cmd = [
+                    "pandoc",
+                    str(input_md),
+                    "-t",
+                    "typst",
+                    "--filter",
+                    str(filter_path),
+                    "-o",
+                    str(body_typ),
+                ]
+
+                try:
+                    subprocess.run(
+                        pandoc_cmd,
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                        timeout=30,
+                    )
+                except subprocess.CalledProcessError as e:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Pandoc conversion failed: {e.stderr}",
+                    ) from e
+                except subprocess.TimeoutExpired as e:
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Pandoc conversion timed out",
+                    ) from e
+
+                # Merge template with generated body
+                template_src = BASE_DIR / "templates" / "main.typ"
+                main_typ = temp_path / "main.typ"
+                template_content = template_src.read_text(encoding="utf-8")
+                body_typ_content = body_typ.read_text(encoding="utf-8")
+
+                escaped_title = request.title
+                escaped_title = escaped_title.replace("\\", "\\\\")
+                escaped_title = escaped_title.replace('"', '\\"')
+                escaped_title = escaped_title.replace("#", "\\#")
+
+                merged_template = template_content.replace(
+                    '#let doc-title = "Document"',
+                    f'#let doc-title = "{escaped_title}"',
+                )
+                merged_template = merged_template.replace("{{BODY_CONTENT}}", body_typ_content)
+                main_typ.write_text(merged_template, encoding="utf-8")
+
+                # Compile to PDF
+                output_pdf = temp_path / "output.pdf"
+                success, message = compile_pdf(
+                    input_file=main_typ,
+                    output_file=output_pdf,
+                    root_dir=temp_path,
+                )
+
+                if not success:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Typst compilation failed: {message}",
+                    )
+
+                if not output_pdf.exists():
+                    raise HTTPException(
+                        status_code=500,
+                        detail="PDF file was not generated",
+                    )
+
+                safe_title = "".join(
+                    c for c in request.title if c.isalnum() or c in (" ", "-", "_")
+                )[:50]
+                filename = f"{safe_title or 'document'}.pdf"
+
+                background_tasks.add_task(cleanup_temp_dir, temp_dir)
+
+                return FileResponse(
+                    path=str(output_pdf),
+                    media_type="application/pdf",
+                    filename=filename,
+                )
+
+            except HTTPException:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                raise
+            except Exception as e:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Unexpected error: {e!s}",
+                ) from e
+
+
+        if __name__ == "__main__":
+            import uvicorn
+
+            uvicorn.run(app, host="0.0.0.0", port=8000)
+
+                merged_template = merged_template.replace("{{BODY_CONTENT}}", body_typ_content)
+                main_typ.write_text(merged_template, encoding="utf-8")
     except Exception as e:
         # Clean up and raise error
         shutil.rmtree(temp_dir, ignore_errors=True)
