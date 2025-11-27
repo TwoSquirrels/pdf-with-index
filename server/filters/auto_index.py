@@ -8,8 +8,13 @@ import os
 import re
 
 import MeCab
-import panflute as pf
 import panflute.utils as pf_utils
+
+# Ensure typst is recognized as a valid RAW format before panflute.elements pulls the list
+if "typst" not in pf_utils.RAW_FORMATS:
+    pf_utils.RAW_FORMATS = tuple(list(pf_utils.RAW_FORMATS) + ["typst"])
+
+import panflute as pf
 
 # Initialize MeCab Tagger with Neologd dictionary (global instance for performance)
 MECAB_NEOLOGD_PATH = os.environ.get(
@@ -23,10 +28,6 @@ except RuntimeError:
     # Fallback to default dictionary if Neologd is not available
     TAGGER = MeCab.Tagger()
 
-    RAW_FORMATS = getattr(pf_utils, "RAW_FORMATS", ())
-    if "typst" not in RAW_FORMATS:
-        updated_formats = tuple(list(RAW_FORMATS) + ["typst"])
-        pf_utils.RAW_FORMATS = updated_formats
 
 # Stopwords - common formal nouns to exclude
 STOPWORDS = {
