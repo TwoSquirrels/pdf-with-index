@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     sudo \
     wget \
     fonts-noto-cjk \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Install mecab-ipadic-neologd
@@ -40,6 +41,12 @@ RUN curl -L https://github.com/typst/typst/releases/latest/download/typst-x86_64
     && mv typst-x86_64-unknown-linux-musl/typst /usr/bin/typst \
     && chmod +x /usr/bin/typst \
     && rm -rf typst-x86_64-unknown-linux-musl
+
+# Download Noto Japanese fonts for Typst (ensures font families exist)
+RUN mkdir -p /usr/share/fonts/truetype/noto \
+    && curl -L https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Japanese/NotoSansJP-Regular.otf -o /usr/share/fonts/truetype/noto/NotoSansJP-Regular.otf \
+    && curl -L https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf -o /usr/share/fonts/truetype/noto/NotoSansCJKjp-Regular.otf \
+    && fc-cache -f -v
 
 # Set working directory
 WORKDIR /app

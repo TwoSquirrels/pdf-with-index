@@ -219,10 +219,13 @@ def action(elem: pf.Element, doc: pf.Doc) -> pf.Element | list | None:
             # Add the noun itself
             result.append(pf.Str(surface))
 
-            # Add Typst index tag as RawInline
+            # Add Typst metadata entry for indexing
             escaped_word = escape_typst_string(surface)
             escaped_reading = escape_typst_string(reading)
-            tag = f'#term("{escaped_word}", "{escaped_reading}")'
+            tag = (
+                f'metadata((type: "index", word: "{escaped_word}", '
+                f'yomi: "{escaped_reading}"))'
+            )
             result.append(make_typst_raw(tag))
 
             last_end = end
