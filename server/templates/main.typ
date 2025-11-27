@@ -2,7 +2,7 @@
 
 // Font settings for Japanese support
 #let horizontalrule = line(start: (25%, 0%), end: (75%, 0%))
-#set text(font: ("Noto Sans CJK JP", "Noto Sans JP"), lang: "ja")
+#set text(font: ("Noto Sans CJK JP"), lang: "ja")
 #set page(paper: "a4", margin: 2cm)
 #set par(justify: true)
 #set heading(numbering: "1.1")
@@ -98,11 +98,11 @@
 #let body-content = include "body.typ"
 
 // Document title (will be set dynamically)
-#let doc-title = state("doc-title", "Document")
+#let doc-title = "Document"
 
 // Title page
 #align(center + horizon)[
-  #text(size: 2em, weight: "bold")[#doc-title.display()]
+  #text(size: 2em, weight: "bold")[#doc-title]
 ]
 
 #pagebreak()

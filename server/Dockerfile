@@ -39,8 +39,9 @@ RUN wget https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pando
     && dpkg -i pandoc-${PANDOC_VERSION}-1-amd64.deb \
     && rm pandoc-${PANDOC_VERSION}-1-amd64.deb
 
-# Install Typst
-RUN curl -L https://github.com/typst/typst/releases/latest/download/typst-x86_64-unknown-linux-musl.tar.xz | tar xJf - \
+# Install Typst (v0.11.1 fixed for compatibility)
+ARG TYPST_VERSION=v0.11.1
+RUN curl -L https://github.com/typst/typst/releases/download/${TYPST_VERSION}/typst-x86_64-unknown-linux-musl.tar.xz | tar xJf - \
     && mv typst-x86_64-unknown-linux-musl/typst /usr/bin/typst \
     && chmod +x /usr/bin/typst \
     && rm -rf typst-x86_64-unknown-linux-musl

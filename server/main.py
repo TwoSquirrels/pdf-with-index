@@ -136,8 +136,8 @@ async def generate_pdf(
         # Escape hash to prevent Typst code execution
         escaped_title = escaped_title.replace("#", "\\#")
         modified_template = template_content.replace(
-            '#let doc-title = state("doc-title", "Document")',
-            f'#let doc-title = state("doc-title", "{escaped_title}")',
+            '#let doc-title = "Document"',
+            f'#let doc-title = "{escaped_title}"',
         )
         main_typ.write_text(modified_template, encoding="utf-8")
 
