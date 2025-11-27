@@ -94,9 +94,6 @@
   ]
 }
 
-// Include body content (will be set by the generator)
-#let body-content = include "body.typ"
-
 // Document title (will be set dynamically)
 #let doc-title = "Document"
 
@@ -113,7 +110,7 @@
 #pagebreak()
 
 // Main content
-#body-content
+{{BODY_CONTENT}}
 
 #pagebreak()
 

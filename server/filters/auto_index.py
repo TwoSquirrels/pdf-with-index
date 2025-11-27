@@ -216,16 +216,14 @@ def action(elem: pf.Element, doc: pf.Doc) -> pf.Element | list | None:
             if start > last_end:
                 result.append(pf.Str(text[last_end:start]))
 
-            # Add the noun itself
-            result.append(pf.Str(surface))
+                # Add Typst metadata entry before the noun
+                escaped_word = escape_typst_string(surface)
+                escaped_reading = escape_typst_string(reading)
+                tag = f'#term("{escaped_word}", "{escaped_reading}")'
+                result.append(make_typst_raw(tag))
 
-            # Add Typst metadata entry for indexing
-            escaped_word = escape_typst_string(surface)
-            escaped_reading = escape_typst_string(reading)
-            tag = (
-                f'\u200B#term("{escaped_word}", "{escaped_reading}")'
-            )
-            result.append(make_typst_raw(tag))
+                # Add the noun itself
+                result.append(pf.Str(surface))
 
             last_end = end
 

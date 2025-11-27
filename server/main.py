@@ -41,39 +41,26 @@ def cleanup_temp_dir(temp_dir: str) -> None:
 class PDFRequest(BaseModel):
     """Request model for PDF generation."""
 
-    title: str
-    content: str
+        # Read template and body, then merge into final Typst file
+        template_src = BASE_DIR / "templates" / "main.typ"
+        main_typ = temp_path / "main.typ"
 
+        template_content = template_src.read_text(encoding="utf-8")
+        body_typ_content = body_typ.read_text(encoding="utf-8")
 
-@app.get("/")
-async def root() -> dict:
-    """Root endpoint for health check."""
-    return {"status": "ok", "message": "PDF with Index Generator is running"}
+        # Escape title for Typst string literal
+        escaped_title = request.title
+        escaped_title = escaped_title.replace("\\", "\\\\")
+        escaped_title = escaped_title.replace('"', '\\"')
+        escaped_title = escaped_title.replace("#", "\\#")
 
+        merged_template = template_content.replace(
+            '#let doc-title = "Document"',
+            f'#let doc-title = "{escaped_title}"',
+        )
 
-@app.get("/health")
-async def health_check() -> dict:
-    """Health check endpoint."""
-    return {"status": "healthy"}
-
-
-@app.post("/generate-pdf")
-async def generate_pdf(
-    request: PDFRequest,
-    background_tasks: BackgroundTasks,
-) -> FileResponse:
-    """
-    Generate a PDF with automatic indexing from Markdown content.
-
-    Args:
-        request: PDFRequest containing title and content
-
-    Returns:
-        FileResponse with the generated PDF
-    """
-    # Create temporary directory
-    temp_dir = tempfile.mkdtemp()
-    temp_path = Path(temp_dir)
+        merged_template = merged_template.replace("{{BODY_CONTENT}}", body_typ_content)
+        main_typ.write_text(merged_template, encoding="utf-8")
 
     try:
         # Save input markdown
