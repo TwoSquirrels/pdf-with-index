@@ -5,9 +5,7 @@
 // @description  Generate PDF with automatic indexing from CodiMD (md.trap.jp) notes
 // @author       TwoSquirrels
 // @match        https://md.trap.jp/*
-// @grant        GM_xmlhttpRequest
-// @connect      localhost
-// @connect      *
+// @grant        none
 // ==/UserScript==
 
 (function () {

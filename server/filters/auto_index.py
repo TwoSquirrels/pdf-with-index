@@ -161,11 +161,16 @@ def extract_nouns_with_reading(text: str) -> list[tuple[str, str, int, int]]:
                 pos = ",".join(features[:4]) if len(features) >= 4 else features[0]
 
                 # Get reading (7th field in MeCab output)
-                reading = features[7] if len(features) > 7 else surface
+                # Handle case where reading is missing or is a wildcard
+                reading = (
+                    features[7]
+                    if len(features) > 7 and features[7] != "*"
+                    else surface
+                )
 
                 if is_valid_noun(surface, pos, reading):
-                    # Convert to katakana if reading is available
-                    if reading == "*" or not reading:
+                    # Ensure reading is valid
+                    if not reading:
                         reading = surface
                     results.append((surface, reading, start, end))
 

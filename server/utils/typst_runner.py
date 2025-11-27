@@ -4,15 +4,18 @@ Handles Typst compilation and font verification.
 """
 
 import subprocess
+from functools import lru_cache
 from pathlib import Path
 
 
-def check_fonts() -> list[str]:
+@lru_cache(maxsize=1)
+def check_fonts() -> tuple[str, ...]:
     """
     Check available fonts recognized by Typst.
+    Results are cached since fonts don't change during runtime.
 
     Returns:
-        List of available font names
+        Tuple of available font names
     """
     result = subprocess.run(
         ["typst", "fonts"],
@@ -20,7 +23,7 @@ def check_fonts() -> list[str]:
         text=True,
         check=True,
     )
-    return result.stdout.strip().split("\n")
+    return tuple(result.stdout.strip().split("\n"))
 
 
 def compile_pdf(
@@ -67,6 +70,7 @@ def compile_pdf(
 def verify_japanese_fonts() -> bool:
     """
     Verify that Japanese fonts are available.
+    Uses cached font list for efficiency.
 
     Returns:
         True if Japanese fonts are found

@@ -121,8 +121,13 @@ async def generate_pdf(
 
         # Read and modify template to set title
         template_content = template_src.read_text(encoding="utf-8")
-        # Replace the title state initialization with the actual title
-        escaped_title = request.title.replace("\\", "\\\\").replace('"', '\\"')
+        # Escape title for Typst string literal
+        # Handle backslashes first, then quotes, then other special characters
+        escaped_title = request.title
+        escaped_title = escaped_title.replace("\\", "\\\\")
+        escaped_title = escaped_title.replace('"', '\\"')
+        # Escape hash to prevent Typst code execution
+        escaped_title = escaped_title.replace("#", "\\#")
         modified_template = template_content.replace(
             '#let doc-title = state("doc-title", "Document")',
             f'#let doc-title = state("doc-title", "{escaped_title}")',

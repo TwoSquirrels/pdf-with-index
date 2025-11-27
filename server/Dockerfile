@@ -26,10 +26,12 @@ RUN git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git /tmp
     && ./bin/install-mecab-ipadic-neologd -n -y \
     && rm -rf /tmp/mecab-ipadic-neologd
 
-# Install Pandoc (latest version)
-RUN wget https://github.com/jgm/pandoc/releases/download/3.1.11/pandoc-3.1.11-1-amd64.deb \
-    && dpkg -i pandoc-3.1.11-1-amd64.deb \
-    && rm pandoc-3.1.11-1-amd64.deb
+# Install Pandoc
+# Note: Update PANDOC_VERSION when a newer version is needed
+ARG PANDOC_VERSION=3.1.11
+RUN wget https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-1-amd64.deb \
+    && dpkg -i pandoc-${PANDOC_VERSION}-1-amd64.deb \
+    && rm pandoc-${PANDOC_VERSION}-1-amd64.deb
 
 # Install Typst
 RUN curl -L https://github.com/typst/typst/releases/latest/download/typst-x86_64-unknown-linux-musl.tar.xz | tar xJf - \
