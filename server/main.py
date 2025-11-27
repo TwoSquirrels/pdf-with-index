@@ -115,12 +115,20 @@ async def generate_pdf(
                 detail="Pandoc conversion timed out",
             ) from e
 
+        term_helper = (
+            '#let term(word, yomi) = {\n'
+            '  metadata((type: "index", word: word, yomi: yomi))\n'
+            '}\n\n'
+        )
         horizontalrule_def = '#let horizontalrule = line(start: (25%, 0%), end: (75%, 0%))\n'
         body_typ_content = body_typ.read_text(encoding="utf-8")
-        if not body_typ_content.lstrip().startswith("#let horizontalrule"):
-            body_typ.write_text(
-                horizontalrule_def + body_typ_content, encoding="utf-8"
-            )
+        prefix = ""
+        if not body_typ_content.lstrip().startswith("#let term"):
+            prefix += term_helper
+        if "#let horizontalrule" not in body_typ_content:
+            prefix += horizontalrule_def
+        if prefix:
+            body_typ.write_text(prefix + body_typ_content, encoding="utf-8")
 
         # Copy main template
         template_src = BASE_DIR / "templates" / "main.typ"

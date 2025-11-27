@@ -7,6 +7,11 @@
 #set par(justify: true)
 #set heading(numbering: "1.1")
 
+// Term helper
+#let term(word, yomi) = {
+  metadata((type: "index", word: word, yomi: yomi))
+}
+
 // Make index function
 // Collects all term metadata and generates a sorted index
 #let make-index() = context {

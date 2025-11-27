@@ -223,8 +223,7 @@ def action(elem: pf.Element, doc: pf.Doc) -> pf.Element | list | None:
             escaped_word = escape_typst_string(surface)
             escaped_reading = escape_typst_string(reading)
             tag = (
-                f'#metadata((type: "index", word: "{escaped_word}", '
-                f'yomi: "{escaped_reading}"))'
+                f'\u200B#term("{escaped_word}", "{escaped_reading}")'
             )
             result.append(make_typst_raw(tag))
 
