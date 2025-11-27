@@ -1,6 +1,7 @@
 // main.typ - Typst template for PDF with auto-indexing
 
 // Font settings for Japanese support
+#let horizontalrule = line(start: (25%, 0%), end: (75%, 0%))
 #set text(font: ("Noto Sans CJK JP", "Noto Sans JP"), lang: "ja")
 #set page(paper: "a4", margin: 2cm)
 #set par(justify: true)
