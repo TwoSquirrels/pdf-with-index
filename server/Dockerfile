@@ -8,6 +8,7 @@ ENV MECAB_NEOLOGD_PATH=/usr/lib/x86_64-linux-gnu/mecab/dic/mecab-ipadic-neologd
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
+    file \
     mecab \
     libmecab-dev \
     mecab-ipadic-utf8 \
