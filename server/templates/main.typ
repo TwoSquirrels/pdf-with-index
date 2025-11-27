@@ -15,7 +15,7 @@
 
 // Make index function
 // Collects all term metadata and generates a sorted index
-#let make-index() = {
+#let make-index() = context {
   // Get all index metadata entries and filter for type "index"
   let all-terms = query(metadata)
   let index-terms = all-terms.filter(entry => {
