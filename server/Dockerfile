@@ -21,6 +21,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     fonts-noto-cjk \
     unzip \
+    fontconfig \
     && rm -rf /var/lib/apt/lists/*
 
 # Install mecab-ipadic-neologd
