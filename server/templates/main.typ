@@ -7,12 +7,6 @@
 #set par(justify: true)
 #set heading(numbering: "1.1")
 
-// Term function for index entries
-// This creates invisible metadata for index collection
-#let term(word, yomi) = {
-  metadata((type: "index", word: word, yomi: yomi))
-}
-
 // Make index function
 // Collects all term metadata and generates a sorted index
 #let make-index() = context {
