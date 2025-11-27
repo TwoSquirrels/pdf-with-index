@@ -5,6 +5,7 @@ FROM python:3.11-slim
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV MECAB_NEOLOGD_PATH=/usr/lib/x86_64-linux-gnu/mecab/dic/mecab-ipadic-neologd
+ENV MECABRC=/etc/mecabrc
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \

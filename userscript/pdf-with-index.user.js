@@ -129,7 +129,12 @@
       if (response.status < 200 || response.status >= 300) {
         let message = response.statusText || "";
         if (response.response) {
-          const text = await response.response.text().catch(() => "");
+          let text = "";
+          if (typeof response.response === "string") {
+            text = response.response;
+          } else if (typeof response.response.text === "function") {
+            text = await response.response.text().catch(() => "");
+          }
           if (text) {
             try {
               const parsed = JSON.parse(text);
