@@ -8,15 +8,16 @@ import os
 import re
 
 import MeCab
-import panflute.utils as pf_utils
-
-# Ensure typst can be used as a RAW format even if RAW_FORMATS is missing
-raw_formats = getattr(pf_utils, "RAW_FORMATS", ())
-if "typst" not in raw_formats:
-    updated_formats = tuple(list(raw_formats) + ["typst"])
-    setattr(pf_utils, "RAW_FORMATS", updated_formats)
-
 import panflute as pf
+
+
+def make_typst_raw(text: str) -> pf.RawInline:
+    """Create a RawInline for typst without invoking panflute validation."""
+
+    raw = pf.RawInline.__new__(pf.RawInline)
+    raw.text = text
+    raw.format = "typst"
+    return raw
 
 # Initialize MeCab Tagger with Neologd dictionary (global instance for performance)
 MECAB_NEOLOGD_PATH = os.environ.get(
@@ -222,7 +223,7 @@ def action(elem: pf.Element, doc: pf.Doc) -> pf.Element | list | None:
             escaped_word = escape_typst_string(surface)
             escaped_reading = escape_typst_string(reading)
             tag = f'#term("{escaped_word}", "{escaped_reading}")'
-            result.append(pf.RawInline(tag, format="typst"))
+            result.append(make_typst_raw(tag))
 
             last_end = end
 
