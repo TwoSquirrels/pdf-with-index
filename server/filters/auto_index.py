@@ -10,9 +10,11 @@ import re
 import MeCab
 import panflute.utils as pf_utils
 
-# Ensure typst is recognized as a valid RAW format before panflute.elements pulls the list
-if "typst" not in pf_utils.RAW_FORMATS:
-    pf_utils.RAW_FORMATS = tuple(list(pf_utils.RAW_FORMATS) + ["typst"])
+# Ensure typst can be used as a RAW format even if RAW_FORMATS is missing
+raw_formats = getattr(pf_utils, "RAW_FORMATS", ())
+if "typst" not in raw_formats:
+    updated_formats = tuple(list(raw_formats) + ["typst"])
+    setattr(pf_utils, "RAW_FORMATS", updated_formats)
 
 import panflute as pf
 
