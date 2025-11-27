@@ -6,6 +6,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV MECAB_NEOLOGD_PATH=/usr/lib/x86_64-linux-gnu/mecab/dic/mecab-ipadic-neologd
 ENV MECABRC=/etc/mecabrc
+# Typst needs explicit hint to system fonts
+ENV TYPST_FONT_PATHS=/usr/share/fonts
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -43,11 +45,8 @@ RUN curl -L https://github.com/typst/typst/releases/latest/download/typst-x86_64
     && chmod +x /usr/bin/typst \
     && rm -rf typst-x86_64-unknown-linux-musl
 
-# Download Noto Japanese fonts for Typst (ensures font families exist)
-RUN mkdir -p /usr/share/fonts/truetype/noto \
-    && curl -L https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Japanese/NotoSansJP-Regular.otf -o /usr/share/fonts/truetype/noto/NotoSansJP-Regular.otf \
-    && curl -L https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf -o /usr/share/fonts/truetype/noto/NotoSansCJKjp-Regular.otf \
-    && fc-cache -f -v
+# Update font cache after installing fonts
+RUN fc-cache -f -v
 
 # Set working directory
 WORKDIR /app
