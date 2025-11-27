@@ -17,6 +17,7 @@
   const DEBUG_PREFIX = "[PDF with Index]";
   const MENU_SELECTOR =
     'ul.dropdown-menu.list[role="menu"][aria-labelledby="menu"]';
+  const INFO_BLOCK_PATTERN = /\n\s*:::\s*info\s*\n.*?\n\s*:::\s*\n/gs;
 
   // Wait for page to load
   function waitForElement(selector, timeout = 10000) {
@@ -110,6 +111,7 @@
       }
 
       const title = getDocumentTitle();
+      const sanitizedContent = content.replace(INFO_BLOCK_PATTERN, "\n\n");
 
       // Make API request
       console.log(DEBUG_PREFIX, "generatePDF request", API_ENDPOINT);
@@ -119,7 +121,7 @@
         headers: {
           "Content-Type": "application/json",
         },
-        data: JSON.stringify({ title, content }),
+        data: JSON.stringify({ title, content: sanitizedContent }),
         responseType: "blob",
       });
 
